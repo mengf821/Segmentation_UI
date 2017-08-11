@@ -9,6 +9,18 @@ class customRect extends fabric.Rect
   {
     return this.width * this.height;
   }
+
+  getSides()
+  {
+    //note this can only be used after setCoords
+    var sides = new Object;
+    sides.left = this.aCoords.tl.x;
+    sides.top = this.aCoords.tl.y;
+    sides.right = this.aCoords.br.x;
+    sides.bottom = this.aCoords.br.y;
+
+    return sides;
+  }
   /*
   When objects are scaled in Canvas, their width and height don't change,
   but scaleX and scaleY are changed to adapt the change in size. I guess
@@ -25,13 +37,42 @@ class customRect extends fabric.Rect
     this.on(
       'scaling', function(event) {
         var pointer = canvas.getPointer(event.e);
-        console.log(pointer.x);
-        console.log(pointer.y);
-        var rect = this,
-        w = rect.width * rect.scaleX,
-        h = rect.height * rect.scaleY;
-        //w = rect.getScaledWidth();
-        //h = rect.getScaledHeight();
+        //using canvas might not be the best practice, might move to
+        //interface.js later on
+        var rect = this;
+        rect.setCoords();
+        var w = rect.aCoords.tr.x - rect.aCoords.tl.x - 1 ;
+        var h = rect.aCoords.bl.y - rect.aCoords.tl.y - 1;
+        var sides = rect.getSides();
+
+        if(sides.left<= 0)
+        {
+          //console.log('left');
+          rect.set({"left" : 0 });
+          w = sides.right - 1;
+        }
+
+        if(sides.right >= canvas.getWidth())
+        {
+          //console.log('right');
+          w = canvas.getWidth() - sides.left - 1;//might not need the -1
+        }
+
+        if(sides.top <= 0)
+        {
+          //console.log('top');
+          rect.set({"top" : 0 });
+          h = sides.bottom - 1;
+        }
+
+        if(sides.bottom >= canvas.getHeight())
+        {
+          //console.log('bottom');
+          h = canvas.getHeight() - sides.top - 1;
+        }
+
+
+
         rect.set({
           'height': h,
           'width' : w,
@@ -43,68 +84,6 @@ class customRect extends fabric.Rect
         canvas.renderAll();
 
       });
-  }
-
-  setScalingRectangleOrigin(pointer)
-  {
-
-  }
-
-  setOriginX(position)
-  {
-    if(position === "left")
-    {
-      if(this.originX === "right")
-      this.set({
-        "originX" : "left",
-        "left"    :  this.left - this.width
-      });
-    }
-
-    else if(position === "right")
-    {
-      if(this.originX === "left")
-      {
-        this.set({
-          "originX" : "right",
-          "left"    :  this.left + this.width
-        });
-      }
-    }
-    else
-    {
-      console.log("Incorrect X position value");
-    }
-
-    this.setCoords();
-  }
-
-  setOriginY(position)
-  {
-    if(position === "top")
-    {
-      if(this.originX === "bottom")
-      this.set({
-        "originY" : "top",
-        "top"    :  this.top - this.height
-      });
-    }
-
-    else if(position === "bottom")
-    {
-      if(this.originX === "top")
-      {
-        this.set({
-          "originY" : "bottom",
-          "top"    :  this.top + this.height
-        });
-      }
-    }
-    else
-    {
-      console.log("Incorrect Y position value");
-    }
-    this.setCoords();
   }
 
   static calculateIntersectionArea(rectA, rectB)
@@ -124,67 +103,5 @@ class customRect extends fabric.Rect
   {
     return this.calculateIntersectionArea(rectA, rectB)/this.calculateUnionArea(rectA, rectB);
   }
-
-
-
-  // static calculateAreaDifference(rectA, rectB)
-  // {
-  //   Math.abs(rectA.getArea() - rectB.getArea());
-  // }
-  //
-  // static calculateDistance(pointA, pointB)
-  // {
-  //   var squareX = Math.pow((pointA.x - pointB.x), 2);
-  //   var squareY = Math.pow((pointA.y - pointB.y), 2);
-  //   var distance = Math.sqrt(squareX + squareY);
-  //
-  //   return distance;
-  // }
-  // static centreCoordDist(rectA, rectB)
-  // {
-  //   return this.calculateDistance(rectA.getCenterPoint(), rectB.getCenterPoint());
-  // }
-  //
-  // //Returns whether area difference is less than the greatest allowable value
-  // static compareArea(targetRect, comparisonRect)
-  // {
-  //   var allowedErrorFactor = 0.1;
-  //   var areaDifference = Math.abs(targetRect.getArea() - comparisonRect.getArea());
-  //
-  //   return areaDifference <= comparisonRect.getArea() * allowedErrorFactor;
-  // }
-  //
-  // static centreDistWithinAllowedError(rectA, rectB)
-  // {
-  //   var maxDist = 10;
-  //   return this.centreCoordDist(rectA, rectB) <= maxDist;
-  // }
-  //
-  // static widthWithinAllowedError(targetRect, comparisonRect)
-  // {
-  //   var allowedErrorFactor = 0.1;
-  //   var widthDiff = Math.abs(targetRect.width - comparisonRect.width);
-  //
-  //   //console.log(widthDiff);
-  //   return widthDiff <= (comparisonRect.width * allowedErrorFactor);
-  // }
-  //
-  // static heightWithinAllowedError(targetRect, comparisonRect)
-  // {
-  //   var allowedErrorFactor = 0.1;
-  //   var heightDiff = Math.abs(targetRect.height - comparisonRect.height);
-  //
-  //   //console.log(heightDiff);
-  //   return heightDiff <= (comparisonRect.height * allowedErrorFactor);
-  // }
-  //
-  // static matchRectangle(targetRect, comparisonRect)
-  // {
-  //   var centreWithinError = this.centreDistWithinAllowedError(targetRect, comparisonRect);
-  //   var heightWithinError = this.heightWithinAllowedError(targetRect, comparisonRect);
-  //   var widthWithinError = this.widthWithinAllowedError(targetRect, comparisonRect);
-  //   return (centreWithinError && heightWithinError && widthWithinError);
-  // }
-
 
 }

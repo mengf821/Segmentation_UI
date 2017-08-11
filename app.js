@@ -33,6 +33,7 @@ fs.readdirSync(path.join(__dirname,'public/images/')).forEach(file =>{
   {
     imgFiles.push(file);
   }
+
 });
 
 // fs.readdir('/images/', (err, files)=>{
@@ -46,6 +47,15 @@ fs.readdirSync(path.join(__dirname,'public/images/')).forEach(file =>{
 app.get('/', function(req, res){
   res.render('index');
 });
+
+app.get('/getImages',function (req, res) {
+  res.json({images: imgFiles});
+});
+
+app.get('/getImageNumber', function(req,res){
+  res.json({imgNum: imgFiles.length});
+});
+
 
 app.get('/getImage',function (req, res) {
 
@@ -89,5 +99,7 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+
 
 module.exports = app;

@@ -79,8 +79,28 @@ class customCanvas extends fabric.Canvas
     tempImg.src = imagePath;
 
     tempImg.onload = function() {
-      tempImg.width = tempImg.width * 0.3;
-      tempImg.height = tempImg.height * 0.3;
+      // var windowWidth = window.innerWidth;
+      // var windowHeight = window.innerHeight;
+      var windowWidth = window.outerWidth;
+      var windowHeight = window.outerHeight;
+      var imgAdjustedWidth = windowWidth * 0.8;
+      var imgAdjustedHeight = windowHeight * 0.8;
+
+      var widthRatio = imgAdjustedWidth/tempImg.width;
+      var heightRatio = imgAdjustedHeight/tempImg.height;
+
+      if(heightRatio < widthRatio)
+        widthRatio = heightRatio;
+      else
+        heightRatio = widthRatio;
+
+        console.log(widthRatio);
+      /*I was going to adjust the heigth and width
+      with the size of the window, but then I realized that
+      this will require the final result to be adjusted -
+      not sure if this is a good thing to do */
+      tempImg.width = Math.max(tempImg.width * 0.3, tempImg.width * widthRatio);
+      tempImg.height = Math.max(tempImg.height * 0.3, tempImg.height * heightRatio);
       canvasWidth = tempImg.width;
       canvasHeight= tempImg.height;
       tempFabricImg = new fabric.Image(tempImg, {
@@ -95,6 +115,7 @@ class customCanvas extends fabric.Canvas
       canvas.setHeight(canvasHeight);
       canvas.setWidth(canvasWidth);
       canvas.calcOffset();
+      //$('canvas').addClass('center');
     }
   }
 
