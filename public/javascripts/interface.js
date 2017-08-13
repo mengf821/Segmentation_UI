@@ -1,5 +1,7 @@
 //ALWAYS REMEMBER TO ALL SETCOORDS
 var canvas = new customCanvas('canvas', {selection: false});
+canvas.addScalingEvent();
+canvas.addMovingEvent();
 const SELECTION_OVERLAP_THRESHOLD = 0.7;
 const SNAP_OVERLAP_THRESHOLD = 0.9;
 const MINIMUM_LENGTH_HEIGHT = 10;
@@ -302,7 +304,7 @@ function initDrawingRectangle(pointer)
 	});
 
 	canvas.add(tempRect);
-  tempRect.addScalingEvent();
+  //tempRect.addScalingEvent();
 	/*The method of inseration might be changed depending on the
 	implementation of selecting rectangle*/
 }

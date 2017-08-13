@@ -36,54 +36,31 @@ class customRect extends fabric.Rect
   {
     this.on(
       'scaling', function(event) {
-        var pointer = canvas.getPointer(event.e);
+        //var pointer = canvas.getPointer(event.e);
         //using canvas might not be the best practice, might move to
         //interface.js later on
-        var rect = this;
-        rect.setCoords();
-        var w = rect.aCoords.tr.x - rect.aCoords.tl.x - 1 ;
-        var h = rect.aCoords.bl.y - rect.aCoords.tl.y - 1;
-        var sides = rect.getSides();
+        //var rect = this;
 
-        if(sides.left<= 0)
-        {
-          //console.log('left');
-          rect.set({"left" : 0 });
-          w = sides.right - 1;
-        }
+        this.modifyWithConstraint()
 
-        if(sides.right >= canvas.getWidth())
-        {
-          //console.log('right');
-          w = canvas.getWidth() - sides.left - 1;//might not need the -1
-        }
-
-        if(sides.top <= 0)
-        {
-          //console.log('top');
-          rect.set({"top" : 0 });
-          h = sides.bottom - 1;
-        }
-
-        if(sides.bottom >= canvas.getHeight())
-        {
-          //console.log('bottom');
-          h = canvas.getHeight() - sides.top - 1;
-        }
-
-
-
-        rect.set({
-          'height': h,
-          'width' : w,
+        this.set({
           'scaleX': 1,
           'scaleY': 1
         });
 
-        rect.setCoords();
+        this.setCoords();
         canvas.renderAll();
 
       });
+  }
+
+
+
+  addmovingEvent()
+  {
+    this.on('moving', function(){
+        this.modifyWithConstraint()
+    });
   }
 
   static calculateIntersectionArea(rectA, rectB)
