@@ -5,9 +5,50 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var fs = require('fs');
-
+var mongoose = require('mongoose');
 // var index = require('./routes/index');
 // var users = require('./routes/users');
+
+var inputDB = 'mongodb://127.0.0.1/generated_rectangle_info';
+var outputDB = 'mongodb://127.0.0.1/output_rectangle_info';
+var inputConnection = mongoose.connect(inputDB, {useMongoClient: true});
+var outputConnection = mongoose.connect(outputDB, {useMongoClient: true});
+
+
+//console.log(inputConnection);
+
+//var db = mongoose.connection;
+//db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+var RectangleSchema = new mongoose.Schema({
+  nodeId:{
+    type:Number,
+    required: true
+  },
+  left:{
+    type:Number,
+    required: true
+  } ,
+  right:{
+    type:Number,
+    required: true
+  } ,
+  top:{
+    type:Number,
+    required: true
+  } ,
+  bottom:{
+    type:Number,
+    required: true
+  }
+});
+
+var inputRectangle = inputConnection.model('Rectangle', RectangleSchema);
+var outputRectangle = outputConnection.model('Rectangle',RectangleSchema);
+
+console.log(inputConnection);
+
+
 
 var app = express();
 
