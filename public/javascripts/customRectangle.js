@@ -1,15 +1,36 @@
 class customRect extends fabric.Rect
 {
+  /*
+  Constructor: customRect(optionsopt)
+  Parameters: Object optionsopt - to set the properties of the canvas
+  Return value: an instance of the customRect class
+  Description: This is a constructor for customRect, the optionsopt
+  values can be found in http://fabricjs.com/docs/fabric.Rect.html.
+  The value should be in the form of {key1: value1, key2: value2...}
+  */
   constructor(optionsopt)
   {
     super(optionsopt);
   }
 
+  /*
+  Method: getArea()
+  Parameters:
+  Return value: Number area
+  Description: get the area of the rectangle
+  */
   getArea()
   {
     return this.width * this.height;
   }
 
+  /*
+  Method: getSides()
+  Parameters:
+  Return value: Object sides
+  Description: get the sides of a rectangle. The return object will have "left",
+  "right", "top", and "bottom" values
+  */
   getSides()
   {
     //note this can only be used after setCoords
@@ -21,48 +42,13 @@ class customRect extends fabric.Rect
 
     return sides;
   }
+
   /*
-  When objects are scaled in Canvas, their width and height don't change,
-  but scaleX and scaleY are changed to adapt the change in size. I guess
-  will work in a better way for things like pictures, since all elements
-  in the picture will be scaled properly. However, this will make the border
-  of a rectangle to be much thicker. Therefore the following method checks the
-  scale and resets the width and height. This however will cause some problem -
-  If you drag the upper left corner you will notice the lower right corner moves
-  slightly. Not sure how big of a problem this will be. Not sure if this can be
-  improved by chaging origX nd origY
+  Method: calculateIntersectionArea
+  Parameters:
+  Return value: Number intersectionArea
+  Description: static method to get the intersection area between two rectangles
   */
-  addScalingEvent()
-  {
-    this.on(
-      'scaling', function(event) {
-        //var pointer = canvas.getPointer(event.e);
-        //using canvas might not be the best practice, might move to
-        //interface.js later on
-        //var rect = this;
-
-        this.modifyWithConstraint()
-
-        this.set({
-          'scaleX': 1,
-          'scaleY': 1
-        });
-
-        this.setCoords();
-        canvas.renderAll();
-
-      });
-  }
-
-
-
-  addmovingEvent()
-  {
-    this.on('moving', function(){
-        this.modifyWithConstraint()
-    });
-  }
-
   static calculateIntersectionArea(rectA, rectB)
   {
     var overlapWidth = Math.max(0, (Math.min(rectA.aCoords.tr.x, rectB.aCoords.tr.x)-Math.max(rectA.aCoords.tl.x, rectB.aCoords.tl.x)));
@@ -70,12 +56,25 @@ class customRect extends fabric.Rect
     return overlapWidth*overlapHeight;
   }
 
+  /*
+  Method: calculateUnionArea
+  Parameters:
+  Return value: Number unionArea
+  Description: static method to get the union area between two rectangles
+  */
   static calculateUnionArea(rectA, rectB)
   {
     var totalArea = rectA.getArea()+rectB.getArea();
     return totalArea-this.calculateIntersectionArea(rectA, rectB);
   }
 
+  /*
+  Method: intersectionOverUnion
+  Parameters:
+  Return value: Number intersectionUnionRatio
+  Description: static method to get ratio between intersection and union area
+  of two rectangles
+  */
   static intersectionOverUnion(rectA, rectB)
   {
     return this.calculateIntersectionArea(rectA, rectB)/this.calculateUnionArea(rectA, rectB);

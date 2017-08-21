@@ -1,7 +1,13 @@
 class States{
+
+	/*
+	Constructor: States
+	Parameters:
+	Return value: an instatnce of States Class, with mode set to draw
+	*/
 	constructor()
 	{
-		this.draw = true;//Default value is currently draw, may change later
+		this.draw = true;
 		this.select = false;
 		this.resize = false;
 		this.delete = false;
@@ -13,7 +19,9 @@ class States{
 	Parameters:
 	Return value: undefined
 	Description: Private method that sets the values of all fields of the class
-	to be false
+	to be false (please note: unless used in strict mode, there is no acutal
+	'private' methods or variables in JavaScript, so this method can still be
+	accessed from outside of the class, but please don't do that)
 	*/
 	_setFalse()
 	{
@@ -26,7 +34,7 @@ class States{
 
 	/*
 	Method: setState
-	Parameters: string state ('draw', 'select', 'resize')
+	Parameters: String state ('draw', 'select', 'resize')
 	Return value: undefined
 	Description: Public method that sets the state, ensures only one state is
 	true at all time. Please don't directly set the state as having multiple

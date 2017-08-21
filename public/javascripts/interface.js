@@ -1,22 +1,65 @@
-//ALWAYS REMEMBER TO ALL SETCOORDS
+/*
+Declare a new canvas object, add listeners to object:scaling and object:moving
+events
+*/
 var canvas = new customCanvas('canvas', {selection: false});
 canvas.addScalingEvent();
 canvas.addMovingEvent();
+
+/*
+Declare constants
+SELECTION_OVERLAP_THRESHOLD: if the intersection/union value for the rectangle
+drawn in select mode and an existing rectangle is lower than this threshold,
+then the rectangle will not be selected
+SNAP_OVERLAP_THRESHOLD: if the intersection/union value beween any rectangles
+drawn in draw mode and an existing rectangle is greater than or equal to this
+value, then the rectangle will bedeleted as it is considered to be a replica
+of an existing rectangle
+MINIMUM_LENGTH_HEIGHT: if the width or height of a newly drawn rectangle is
+smaller than this value, the rectangle will be deleted. (the feature should
+also be added to resizing rectangle)
+IMG_DIR: the directory for all images
+*/
 const SELECTION_OVERLAP_THRESHOLD = 0.7;
 const SNAP_OVERLAP_THRESHOLD = 0.9;
 const MINIMUM_LENGTH_HEIGHT = 10;
 const IMG_DIR ='/images/';
+
+
+//Variable declarations
 var canvasWidth = 0;
 var canvasHeight = 0;
 var isDown, origX, origY;
 var tempRect;
 var activeRect;
 var selectedRect;
+
+/*
+Stores the existing rectangles on the page. I think using this is better than
+using canvas.getObjects() because all objects will be returned by that method,
+regardless of whether the object will be deleted after mouse up event. The array
+should only store rectangles drawn in "draw" mode or from the initially
+generated segmentation that are considered to be valid(dosn't have a very
+small height or width, doesn't get deleted after mouse up etc.)
+*/
 var rects = [];
+
+/*
+stores the order of index that the images is going to be returned from
+the server
+*/
 var imgIndexArr = [];
+
+/*tracks the number of images shown to the user, imgIndex[arrIndex] will be
+used as the index of the image that the client requests from the server */
 var arrIndex = 0;
 
-
+/*
+Ajax call to get the number of images in the images folder. An array will then
+be generated with index from 0 to numberOfImage-1. The array will be suffled
+so that each time the client will provide a different image index to the server
+which ensures images are displayed in random order.
+*/
 $.get('/getImageNumber', {}, function(data) {
 }, "json").done(function(result){
   var imgNum = result.imgNum;
@@ -29,8 +72,14 @@ $.get('/getImageNumber', {}, function(data) {
   setNewBackground(IMG_DIR, canvas);
 });
 
+
+/*Listens to the clicking event of draw button, change the mode to draw*/
 $( "#drawBtn" ).click(function() {
-  //to be changed later
+
+  /*
+  Reset the properties of active rectangles and discard any active object,
+  so that no rectangles will be accidentally selected
+  */
   if(activeRect != null || activeRect != undefined)
   {
     activeRect.set({
@@ -41,14 +90,18 @@ $( "#drawBtn" ).click(function() {
       "lockMovementY": true
     });
   }
+  canvas.discardActiveObject();
+  canvas._activeObject = null;
+  canvas.renderAll();
  	canvas.mode.setState('draw');
   canvas.setDrawingCursor();
 });
 
+/*Listens to the the clicking event of select button, change the mode to select*/
 $( "#selectBtn" ).click(function() {
+  /*resets the property of active rectangle*/
   if(activeRect != null || activeRect != undefined)
   {
-    //might want to change later
     activeRect.set({
       "evented"      : false,
       "lockScalingX" : true,
@@ -61,8 +114,11 @@ $( "#selectBtn" ).click(function() {
   canvas.setSelectCursor();
 });
 
+/*Listens to the click of resize button, change the mode to resize*/
 $( "#resizeBtn" ).click(function() {
-  //to be changed later
+  activeRect = canvas.getActiveObject();
+
+  //sets the properties of the rectangle, so that is will not move
   if(activeRect != null || activeRect != undefined)
   {
     activeRect.set({
@@ -73,9 +129,8 @@ $( "#resizeBtn" ).click(function() {
   }
  	canvas.mode.setState('resize');
   canvas.setResizeCursor();
-  activeRect = canvas.getActiveObject();
 
-  //to be changed later
+  //Sets the properties of the rectangle so that resize is allowed
   if(activeRect != null || activeRect != undefined)
   {
     activeRect.set({
@@ -87,8 +142,10 @@ $( "#resizeBtn" ).click(function() {
 
 });
 
+/*Listens to the clicking event of the move button, change the mode to move*/
 $( "#moveBtn" ).click(function() {
-  //to be changed later
+
+  //Sets properties of rectangle so that it will not be resized by accident
   if(activeRect != null || activeRect != undefined)
   {
     activeRect.set({
@@ -100,6 +157,8 @@ $( "#moveBtn" ).click(function() {
  	canvas.mode.setState('move');
   canvas.setMoveCursor();
   activeRect = canvas.getActiveObject();
+
+  //Sets properties of the rectangle to allow movement
   if(activeRect != null || activeRect != undefined)
   {
     activeRect.set({
@@ -111,8 +170,10 @@ $( "#moveBtn" ).click(function() {
   }
 });
 
+/*Listens to the clicking event of the delete button, deletes selected
+rectangle*/
 $( "#deleteBtn" ).click(function() {
-  //to be changed later
+  activeRect = canvas.getActiveObject();
   if(activeRect)
   {
     activeRect.set({
@@ -123,54 +184,98 @@ $( "#deleteBtn" ).click(function() {
       "lockMovementY": true
     });
   }
+  //sets the state to delete
  	canvas.mode.setState('delete');
-  activeRect = canvas.getActiveObject();
+
+  //deletes the selected rectangle from the rect array
   rects = rects.filter(function(rect){
     return rect !== activeRect;
-    //Not sure how much efficiency this will sacrifice
   });
 
+  //discard the active object on the canvas
+  canvas.discardActiveObject();
+
+  /*
+  this is a supposed to be a private variable, but for some reason
+  discardActiveObject may not work occasionally. There might be some problem
+  with my implementation. This is really strange because discardActiveObejct()
+  sets _activeObject = null interally.
+  */
+  canvas._activeObject = null;
+
+  //removes the object from canvas
   canvas.remove(activeRect);
   activeRect = null;
+  canvas.renderAll();
   canvas.setDeleteCursor();
 });
 
+/*Listens to the clicking event of the submit button, sends the segmentation
+information to the server and resets the canvas*/
 $( "#submitBtn" ).click(function() {
   var final_result = [];
   rects.forEach(function(rect){
-    rect.setCoords();//Just to make sure the coordinates are right
+    rect.setCoords();//update the coordinates of all rectangles
     var sides = rect.getSides();
+
+    //store the information of the sides of the rectangles in an array
     final_result.push(sides);
   });
+
   requestParam = {rectangle_data: final_result};
+
+  /*
+  Ajax post request to send the segmentation information collected to the
+  server
+  */
   $.post('/submitData',requestParam, function(data) {
     console.log(":)");
     //console.log(data);
     //  $('#results').html(data);
   });
 
+  //Sets new background for the canvas
   setNewBackground(IMG_DIR, canvas);
   rects = [];
+
+  //clears the canvas
   canvas.clear();
+
+  //discards all active objects
   canvas.discardActiveObject();
 
-  //Probably shouldn't access 'private' varible, but canvas won't clear
-  //if this is not done
+  /*
+  Discards active objects. _activeObject is supposed to be a private variable,
+  therefore this should probably not be done. But for some reason the canvas
+  may not be cleared if this call is not made. I am not sure why because
+  canvas.discardActiveObject() sets canvas._activeObject = null inside the
+  method
+  */
   canvas._activeObject = null;
 
+  //renders new canvas and resets the state
   canvas.renderAll();
   canvas.mode.setState('draw');
-  //getImageString()
 });
 
+/*
+Adds event listener to before:selection:cleared, stores the target of the event
+in a variable that is going to be used in the listener of selection:cleared
+*/
 canvas.on("before:selection:cleared", function(event){
     selectedRect = event.target;
 });
 
+/*
+Addes event listener to event "selection:cleared". This will set the target
+of before:selection:cleared to be active again in resize, move and delete
+mode to prevent the target to be accidentally deselected
+*/
 canvas.on("selection:cleared", function(event){
   if(canvas.mode.resize || canvas.mode.move || canvas.mode.delete)
   {
     canvas.setActiveObject(selectedRect);
+    canvas.renderAll();
   }
   else
   {
@@ -184,21 +289,38 @@ canvas.on("selection:cleared", function(event){
   }
 });
 
+/*
+Listens to after:render event and calculates element offset relative to the
+document
+*/
 canvas.on("after:render", function(){
     canvas.calcOffset();
 });
 
+/*listens for the mouse up event, and performs appropriate action depending
+on the current mode*/
 canvas.on('mouse:up', function(event){
 	isDown = false;
 
+  /*
+  In draw mode, it checks whether the rectangle is deleted because it is too
+  similar to an existing rectangle or has a very small width or height. If the
+  rectangle is not deleted, it will be added to rects array.
+  */
   if(canvas.mode.draw)
   {
     if(!snap())
     {
-      rects.push(tempRect);//snap validation will be added later
+      rects.push(tempRect);
     }
 
   }
+
+  /*
+  In select mode, it checks whether the rectangle overlaps with another
+  rectangle, deletes the rectangle used for selection purpose and set the
+  target rectangle to be the active object
+  */
   else if(canvas.mode.select)
   {
     var overlapRect = checkForOverlap(SELECTION_OVERLAP_THRESHOLD);
@@ -210,9 +332,11 @@ canvas.on('mouse:up', function(event){
     }
 
   }
+
+  //The following are implemented just in case it will be used in the future
   else if(canvas.mode.resize)
   {
-    var temp = canvas.getActiveObject();
+    //var temp = canvas.getActiveObject();
   }
   else
   {
@@ -222,12 +346,20 @@ canvas.on('mouse:up', function(event){
   tempRect = null;
 });
 
+/*Listens to the mouse down event and performs appropriate action*/
 canvas.on('mouse:down', function(event){
 	isDown = true;
 
+  //Gets where the pointer is (where the cursor is pointing to)
 	var pointer = canvas.getPointer(event.e);
 	origX = pointer.x;
 	origY = pointer.y;
+
+  /*
+  Initializes rectangles for draw and select mode, the rectangle will have
+  different properties, and they will have height and width of 0 and positioned
+  right at the pointer.
+  */
 	if(canvas.mode.draw)
 	{
 		initDrawingRectangle(pointer);
@@ -238,12 +370,26 @@ canvas.on('mouse:down', function(event){
 	}
 });
 
+/*Listens for mouse:move event and performs appropriate action*/
 canvas.on('mouse:move', function(event){
-	if (!isDown) return;
+
+  //checks whether the mouse is down
+  if (!isDown) return;
+
+  /*
+  Rectangles will be drawn for selet and draw mode. This implementation is
+  flawed because the corners that are not dragged will also sometimes change
+  its position. It also doesn't limit the rectangle to the boundaries of the
+  canvas
+  */
   if(canvas.mode.select || canvas.mode.draw)
   {
     var pointer = canvas.getPointer(event.e);
 
+    /*
+    Resets the left or top value if the position of the cursor is greater
+    than the initial left or top value
+    */
   	if(origX>pointer.x){
   		tempRect.set({"left": Math.abs(pointer.x)});
   	}
@@ -251,6 +397,10 @@ canvas.on('mouse:move', function(event){
   		tempRect.set({"top": Math.abs(pointer.y)});
   	}
 
+    /*
+    Set the width and height of the rectangle to be difference between the
+    original x and y and the pointer values
+    */
   	tempRect.set({"width": Math.abs(origX - pointer.x)});
   	tempRect.set({"height": Math.abs(origY - pointer.y)});
 
@@ -266,7 +416,7 @@ canvas.on('mouse:move', function(event){
   }
 });
 
-
+//initializes a rectangle for draw mode
 function initDrawingRectangle(pointer)
 {
 	tempRect = new customRect({
@@ -284,6 +434,11 @@ function initDrawingRectangle(pointer)
     selectable         : true,
 		padding            : 0,
 		hasRotatingPoint   : false,
+    /*
+    If the object is not evented, it cannot be a target of events, and
+    listeners for scaling and moving events will not work for the object if it
+    is not evented
+    */
     evented            : false,//need to be true for resize, move and delete
     lockMovementX      : true,//need to be false for move
     lockMovementY      : true,//need to be false for move
@@ -293,22 +448,19 @@ function initDrawingRectangle(pointer)
     cornerColor        : 'rgba(167, 66, 244, 0.5)',
     borderColor        : 'rgba(167, 66, 244, 0.5)',
     transparentCorners : false,
-    objectCaching      : false,
-    noScaleCahe        : true
+    objectCaching      : false
     /*
-    I might be wrong but I think the reason that scaling didn't work correctly
-    is because things are cached.
-    (for any previous version, it will result in weird lines and will sometimes
-    remain like, this is especially a problem when you drag fast)
+    I am not certain why this is - but if f you delete "objectCaching: false"
+    scaling will not work. (without it,  there will be weird lines during
+    scaling)
     */
 	});
 
+  //adds the rectangle to canvas
 	canvas.add(tempRect);
-  //tempRect.addScalingEvent();
-	/*The method of inseration might be changed depending on the
-	implementation of selecting rectangle*/
 }
 
+//initialize rectangle for selection mode
 function initSelectionRectangle(pointer)
 {
 	tempRect = new customRect({
@@ -329,6 +481,10 @@ function initSelectionRectangle(pointer)
 	canvas.add(tempRect);
 }
 
+//Function used to check for overlap. The returned value will be null if
+//the intersectionOverUnion ratio is less than the threshold between
+//the tempRect and any existing rectangle. Otherwise the rectangle that
+//has the hightest intersectionOverUnion ratio will be returned
 function checkForOverlap(threshold)
 {
   var overlapRect = null;
@@ -345,7 +501,12 @@ function checkForOverlap(threshold)
   return overlapRect;
 }
 
-
+/*
+The snapping function currently doesn't snap the sides of two rectangles
+together. It only checks if the new rectangle is too similar to another existing
+rectangle or if the width or height of the new rectangle is too small. If either
+of these criterias are met, then the new rectangle will be deleted.
+*/
 function snap()
 {
   var threshold = MINIMUM_LENGTH_HEIGHT;
@@ -365,10 +526,14 @@ function snap()
   }
   return false;
 
-  /*snap when the width or height or rectangle is smaller than a certain number,
-  or when two rectangles overlap*/
 }
 
+/*function that contains an Ajax call of a get request. The image index will
+be returned from a shuffule array that contains distinct index values from 0
+to numberOfImage - 1. The image name will then be returned from an array of
+image names from the server. After the response gets to the client, the
+background image will be reset. And getSegmentation(imgName) will also be called
+*/
 function setNewBackground(dir, canvas){
   $.get('/getImage', {index:imgIndexArr[arrIndex]}, function(data, textStatus, jqXHR) {
   }, "json").done(function(result){
@@ -377,11 +542,27 @@ function setNewBackground(dir, canvas){
     imgNum = result.imageNum;
     canvas.setBackground(dir+fileName);
     arrIndex = (arrIndex+1)%imgNum;
+    getSegmentation(fileName.replace('.png',''));
   }
   );
 
 }
 
+/*
+This function contains an Ajax call from the server that is supposed to send
+the segmentation read from the database as the response. However, the server
+par is incomplete
+*/
+function getSegmentation(imgName){
+  $.get('/getImageSegmentation', {imgName:imgName}, function(data) {
+  }, "json").done(function(result){
+    var segmentation = result.segmentation;
+    console.log(segmentation);
+  });
+}
+
+
+//function used to shuffle an array
 function shuffle(arr)
 {
   var curr = arr.length;
@@ -401,6 +582,8 @@ function shuffle(arr)
   return arr;
 }
 
+//Initial snapping of the rectangle after the rectangle is drawn, not
+//implemented yet 
 function initialSnap(threshold)
 {
 
